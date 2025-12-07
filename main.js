@@ -41,24 +41,17 @@ function getFemaleSurname(surname) {
     return surname + "ová";
 }
 
-/**
- * Generuje náhodné datum narození přesně v intervalu <minAge, maxAge>.
- */
 function getRandomBirthdate(minAge, maxAge) {
     const now = new Date();
-    
-    // Nejpozdější datum narození (dnes - minAge)
+
     const maxBirthDate = new Date(now);
     maxBirthDate.setFullYear(now.getFullYear() - minAge);
 
-    // Nejčasnější datum narození (dnes - maxAge)
     const minBirthDate = new Date(now);
     minBirthDate.setFullYear(now.getFullYear() - maxAge);
 
     const minTimestamp = minBirthDate.getTime();
     const maxTimestamp = maxBirthDate.getTime();
-    
-    // Náhodný čas mezi těmito dvěma body
     const randomTimestamp = Math.random() * (maxTimestamp - minTimestamp) + minTimestamp;
 
     const birthdate = new Date(randomTimestamp);
