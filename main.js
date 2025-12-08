@@ -1,4 +1,4 @@
-// --- Pomocná data ---
+// --- Pomocná data (privátní pro tento modul) ---
 
 const MALE_NAMES = [
   "Jan", "Petr", "Pavel", "Tomáš", "Martin", "Jakub", "Lukáš", "David", "Jiří", "Ondřej",
@@ -18,25 +18,19 @@ const SURNAMES = [
 const WORKLOADS = [10, 20, 30, 40];
 
 const FEMALE_SURNAME_RULES = [
-  ["ý", 1, "á"], ["a", 1, "ová"], ["ek", 2, "ková"], ["ec", 2, "cová"], ["í", 0, ""]
+  ["ý", 1, "á"],
+  ["a", 1, "ová"],
+  ["ek", 2, "ková"],
+  ["ec", 2, "cová"],
+  ["í", 0, ""]
 ];
 
-// --- Pomocné funkce ---
+// --- Pomocné funkce (privátní pro tento modul) ---
 
-/**
- * Vrátí náhodný prvek z pole.
- * @param {Array} arr Vstupní pole
- * @returns {*} Náhodný prvek
- */
 function getRandomElement(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-/**
- * Převede mužské příjmení na ženské.
- * @param {string} surname Mužské příjmení
- * @returns {string} Ženské příjmení
- */
 function getFemaleSurname(surname) {
   for (const [suffix, removeCount, addSuffix] of FEMALE_SURNAME_RULES) {
     if (surname.endsWith(suffix)) {
@@ -47,89 +41,88 @@ function getFemaleSurname(surname) {
   return surname + "ová";
 }
 
-/**
- * Generuje náhodné datum narození.
- * @param {number} minAge Minimální věk
- * @param {number} maxAge Maximální věk
- * @returns {string} Datum v ISO formátu
- */
 function getRandomBirthdate(minAge, maxAge) {
   const now = new Date();
-  const maxD = new Date(now);
-  maxD.setFullYear(now.getFullYear() - minAge);
-  const minD = new Date(now);
-  minD.setFullYear(now.getFullYear() - maxAge);
-  const rt = Math.random() * (maxD.getTime() - minD.getTime()) + minD.getTime();
-  return new Date(rt).toISOString();
+  const maxBirthDate = new Date(now);
+  maxBirthDate.setFullYear(now.getFullYear() - minAge);
+
+  const minBirthDate = new Date(now);
+  minBirthDate.setFullYear(now.getFullYear() - maxAge);
+
+  const minTimestamp = minBirthDate.getTime();
+  const maxTimestamp = maxBirthDate.getTime();
+  const randomTimestamp = Math.random() * (maxTimestamp - minTimestamp) + minTimestamp;
+
+  const birthdate = new Date(randomTimestamp);
+  return birthdate.toISOString();
 }
 
-/**
- * Vypočítá věk z data narození.
- * @param {string} birthdateString Datum narození
- * @returns {number} Věk
- */
 function getAge(birthdateString) {
   const birthDate = new Date(birthdateString);
   const today = new Date();
   let age = today.getFullYear() - birthDate.getFullYear();
   const m = today.getMonth() - birthDate.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
   return age;
 }
 
-/**
- * Vypočítá medián.
- * @param {Array} numbers Pole čísel
- * @returns {number} Medián
- */
 function getMedian(numbers) {
   if (numbers.length === 0) return 0;
   const sorted = [...numbers].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  const med = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-  return Math.round(med);
+  const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  return Math.round(median);
 }
 
-// --- Exportované funkce ---
+// --- Požadovaná struktura ---
 
+//TODO add imports if needed
+//TODO doc
 /**
- * Hlavní funkce aplikace.
- * @param {object} dtoIn Vstupní data
- * @returns {object} Výstupní statistiky
+ * Hlavní funkce, která generuje náhodný seznam zaměstnanců
+ * a následně z nich vypočítá statistiky.
+ * @param {object} dtoIn contains count of employees, age limit of employees {min, max}
+ * @returns {object} containing the statistics
  */
 export function main(dtoIn) {
+  // 1. Vygenerování dat
   const employees = generateEmployeeData(dtoIn);
+
+  // 2. Výpočet statistik
   return getEmployeeStatistics(employees);
 }
 
 /**
- * Generuje data zaměstnanců.
- * @param {object} dtoIn Vstupní parametry
- * @returns {Array} Seznam zaměstnanců
+ * Generuje seznam náhodných zaměstnanců.
+ * @param {object} dtoIn contains count of employees, age limit of employees {min, max}
+ * @returns {Array} of employees
  */
 export function generateEmployeeData(dtoIn) {
   const dtoOut = [];
-  const { min, max } = dtoIn.age;
-  for (let i = 0; i < dtoIn.count; i++) {
+  const { count, age } = dtoIn;
+  const { min: minAge, max: maxAge } = age;
+
+  for (let i = 0; i < count; i++) {
     const gender = Math.random() < 0.5 ? "male" : "female";
-    const name = gender === "male" ? getRandomElement(MALE_NAMES) : getRandomElement(FEMALE_NAMES);
-    const bs = getRandomElement(SURNAMES);
-    const surname = gender === "male" ? bs : getFemaleSurname(bs);
+    const name = (gender === "male") ? getRandomElement(MALE_NAMES) : getRandomElement(FEMALE_NAMES);
+    const baseSurname = getRandomElement(SURNAMES);
+    const surname = (gender === "male") ? baseSurname : getFemaleSurname(baseSurname);
+    const birthdate = getRandomBirthdate(minAge, maxAge);
+    const workload = getRandomElement(WORKLOADS);
+
     dtoOut.push({
-      gender,
-      birthdate: getRandomBirthdate(min, max),
-      name,
-      surname,
-      workload: getRandomElement(WORKLOADS)
+      gender, birthdate, name, surname, workload
     });
   }
   return dtoOut;
 }
 
 /**
- * Počítá statistiky.
- * @param {Array} employees Seznam zaměstnanců
- * @returns {object} Statistiky
+ * Vypočítá statistiky ze seznamu zaměstnanců.
+ * @param {Array} employees containing all the mocked employee data
+ * @returns {object} statistics of the employees
  */
 export function getEmployeeStatistics(employees) {
   const total = employees.length;
@@ -150,16 +143,18 @@ export function getEmployeeStatistics(employees) {
   }
 
   const sortedAges = [...ages].sort((a, b) => a - b);
-  const minAge = sortedAges.length > 0 ? sortedAges[0] : null;
-  const maxAge = sortedAges.length > 0 ? sortedAges[sortedAges.length - 1] : null;
   const avgAge = total > 0 ? parseFloat((ageSum / total).toFixed(1)) : 0;
   const avgWWl = wCount > 0 ? parseFloat((wWlSum / wCount).toFixed(1)) : 0;
 
   return {
     total,
-    workload10: wlCounts[10], workload20: wlCounts[20],
-    workload30: wlCounts[30], workload40: wlCounts[40],
-    averageAge: avgAge, minAge, maxAge,
+    workload10: wlCounts[10],
+    workload20: wlCounts[20],
+    workload30: wlCounts[30],
+    workload40: wlCounts[40],
+    averageAge: avgAge,
+    minAge: sortedAges.length > 0 ? sortedAges[0] : null,
+    maxAge: sortedAges.length > 0 ? sortedAges[sortedAges.length - 1] : null,
     medianAge: getMedian(sortedAges),
     medianWorkload: getMedian(workloads),
     averageWomenWorkload: avgWWl,
