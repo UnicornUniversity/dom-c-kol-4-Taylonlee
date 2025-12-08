@@ -25,7 +25,7 @@ const FEMALE_SURNAME_RULES = [
     ["í",   0, ""]    // Krejčí -> Krejčí
 ];
 
-// --- Pomocné funkce (privátní pro tento modul) ---
+// --- Pomocné funkce ---
 
 function getRandomElement(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -43,15 +43,16 @@ function getFemaleSurname(surname) {
 
 /**
  * Generuje náhodné datum narození přesně v intervalu <minAge, maxAge>.
+ * Zajišťuje, že věk je matematicky přesný (včetně desetin).
  */
 function getRandomBirthdate(minAge, maxAge) {
     const now = new Date();
     
-    // Nejpozdější datum narození (dnes - minAge)
+    // Nejpozdější datum narození (aby bylo osobě alespoň minAge)
     const maxBirthDate = new Date(now);
     maxBirthDate.setFullYear(now.getFullYear() - minAge);
 
-    // Nejčasnější datum narození (dnes - maxAge)
+    // Nejčasnější datum narození (aby osobě nebylo více než maxAge)
     const minBirthDate = new Date(now);
     minBirthDate.setFullYear(now.getFullYear() - maxAge);
 
@@ -61,12 +62,11 @@ function getRandomBirthdate(minAge, maxAge) {
     // Náhodný čas mezi těmito dvěma body
     const randomTimestamp = Math.random() * (maxTimestamp - minTimestamp) + minTimestamp;
 
-    const birthdate = new Date(randomTimestamp);
-    return birthdate.toISOString();
+    return new Date(randomTimestamp).toISOString();
 }
 
 /**
- * Vypočítá celočíselný věk z data narození.
+ * Vypočítá celočíselný věk (dovršené roky).
  */
 function getAge(birthdateString) {
   const birthDate = new Date(birthdateString);
@@ -79,35 +79,46 @@ function getAge(birthdateString) {
   return age;
 }
 
+/**
+ * Vypočítá medián z pole čísel.
+ * POZOR: Řadí numericky a zajišťuje zaokrouhlení dle zadání.
+ */
 function getMedian(numbers) {
   if (numbers.length === 0) return 0;
+  
+  // Důležité: numerické řazení (a - b)
   const sorted = [...numbers].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
+  
+  let median;
   if (sorted.length % 2 === 0) {
-    return (sorted[mid - 1] + sorted[mid]) / 2;
+    median = (sorted[mid - 1] + sorted[mid]) / 2;
   } else {
-    return sorted[mid];
+    median = sorted[mid];
   }
+  
+  // Zadání: "medianAge... jsou zaokrouhleny na celá čísla"
+  return Math.round(median);
 }
 
 
 // --- Exportované funkce (dle šablony) ---
 
 //TODO add imports if needed
-// (Žádné externí importy nejsou potřeba)
+// (Žádné externí importy nejsou potřeba, vše je definováno výše)
 
 //TODO doc
 /**
  * The main function which calls the application. 
- * Orchestrates the generation of employee data and subsequent calculation of statistics.
+ * Orchestrates generation of employees and calculation of their statistics.
  * @param {object} dtoIn contains count of employees, age limit of employees {min, max}
  * @returns {object} containing the statistics
  */
 export function main(dtoIn) {
-  // 1. Generate data using the helper function
+  // 1. Generate mocked data
   const employees = generateEmployeeData(dtoIn);
   
-  // 2. Calculate statistics using the helper function
+  // 2. Calculate and return statistics
   const dtoOut = getEmployeeStatistics(employees);
   
   return dtoOut;
@@ -129,7 +140,7 @@ export function generateEmployeeData(dtoIn) {
     const baseSurname = getRandomElement(SURNAMES);
     const surname = (gender === "male") ? baseSurname : getFemaleSurname(baseSurname);
     
-    // Generování data narození (dodržuje interval na ms)
+    // Generování data s přesností na ms
     const birthdate = getRandomBirthdate(minAge, maxAge);
     
     const workload = getRandomElement(WORKLOADS);
@@ -156,7 +167,6 @@ export function generateEmployeeData(dtoIn) {
 export function getEmployeeStatistics(employees) {
   const total = employees.length;
   
-  // Pomocné proměnné pro výpočty
   const allAges = [];
   const allWorkloads = [];
   let womenWorkloadSum = 0;
@@ -165,15 +175,18 @@ export function getEmployeeStatistics(employees) {
   
   const workloadCounts = { 10: 0, 20: 0, 30: 0, 40: 0 };
 
-  // Iterace přes zaměstnance
+  // 1. Průchod daty
   for (const emp of employees) {
+    // Věk jako celé číslo (dovršené roky)
     const age = getAge(emp.birthdate);
     allAges.push(age);
     totalAgeSum += age;
 
     allWorkloads.push(emp.workload);
-    if (workloadCounts.hasOwnProperty(emp.workload)) {
-      workloadCounts[emp.workload]++;
+    
+    // Počítání workloadů (bezpečné proti undefined)
+    if (workloadCounts[emp.workload] !== undefined) {
+        workloadCounts[emp.workload]++;
     }
 
     if (emp.gender === "female") {
@@ -182,21 +195,31 @@ export function getEmployeeStatistics(employees) {
     }
   }
 
-  // Výpočty finálních hodnot
+  // 2. Výpočty statistik
+  // Řazení věků numericky
   const sortedAges = [...allAges].sort((a, b) => a - b);
+  
+  // minAge a maxAge: zaokrouhleny na celá čísla (což getAge vrací, takže ok)
   const minAge = sortedAges.length > 0 ? sortedAges[0] : null;
   const maxAge = sortedAges.length > 0 ? sortedAges[sortedAges.length - 1] : null;
   
+  // averageAge: zaokrouhlený na 1 desetinné místo
   const averageAge = total > 0 ? parseFloat((totalAgeSum / total).toFixed(1)) : 0;
+  
+  // medianAge: zaokrouhlený na celé číslo (řeší funkce getMedian)
   const medianAge = getMedian(sortedAges);
 
+  // medianWorkload: celé číslo (inputy jsou 10,20,30,40, medián bude celé číslo nebo .5 zaokrouhlené)
+  // Zadání říká: "median workload jsou celá čísla". Použijeme stejnou getMedian funkci.
   const medianWorkload = getMedian(allWorkloads);
-  const averageWomenWorkload = womenCount > 0 ? (womenWorkloadSum / womenCount) : null;
 
-  // Seřazení pole zaměstnanců podle úvazku
+  // averageWomenWorkload: 1 desetinné nebo celé
+  const averageWomenWorkload = womenCount > 0 ? parseFloat((womenWorkloadSum / womenCount).toFixed(1)) : 0;
+
+  // 3. Řazení seznamu dle workload (numericky)
   const sortedByWorkload = [...employees].sort((a, b) => a.workload - b.workload);
 
-  // Sestavení výstupního objektu
+  // 4. Sestavení výsledku
   const dtoOut = {
     total: total,
     workload10: workloadCounts[10],
